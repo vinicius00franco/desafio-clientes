@@ -46,6 +46,7 @@ public class ContextoApp : DbContext
 
         mb.Entity<HistoricoCliente>(h =>
         {
+            h.HasKey(p => p.HistoricoId);
             h.Property(p => p.HistoricoId)
                 .UseIdentityColumn();
             h.Property(p => p.Nome)

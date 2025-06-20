@@ -1,15 +1,31 @@
 using ApiBackend.Data;
 using ApiBackend.Data.Services;
+using ApiBackend.Features.Clientes.Services;
+using ApiBackend.Services.External;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
+    });
 
 // Add DbContext with SQL Server
 builder.Services.AddDbContext<ContextoApp>(opt =>
     opt.UseSqlServer(builder.Configuration.GetConnectionString("SqlServer")));
+
+// Add AutoMapper
+builder.Services.AddAutoMapper(typeof(Program));
+
+// Add HttpClient for ViaCEP
+builder.Services.AddHttpClient<ViaCepService>();
+
+// Add application services
+builder.Services.AddScoped<ClienteRepository>();
+builder.Services.AddScoped<ClienteService>();
 
 // Add database initialization service
 builder.Services.AddScoped<DatabaseInitializationService>();

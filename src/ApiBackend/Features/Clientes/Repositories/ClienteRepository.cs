@@ -1,6 +1,59 @@
+using ApiBackend.Features.Clientes.Models;
+using ApiBackend.Data;
+using Microsoft.EntityFrameworkCore;
+
 namespace ApiBackend.Features.Clientes.Repositories;
 
 public class ClienteRepository
 {
-    // Implemente métodos de acesso a dados aqui futuramente
+    private readonly ContextoApp _context;
+
+    public ClienteRepository(ContextoApp context)
+    {
+        _context = context;
+    }
+
+    public async Task<int> AdicionarAsync(Cliente cliente)
+    {
+        _context.Clientes.Add(cliente);
+        await _context.SaveChangesAsync();
+        return cliente.ClienteId;
+    }
+
+    public async Task<Cliente?> ObterPorIdAsync(int id)
+    {
+        return await _context.Clientes
+            .Include(c => c.Enderecos)
+            .Include(c => c.Contatos)
+            .FirstOrDefaultAsync(c => c.ClienteId == id);
+    }
+
+    public async Task<IEnumerable<Cliente>> ListarTodosAsync()
+    {
+        return await _context.Clientes
+            .Include(c => c.Enderecos)
+            .Include(c => c.Contatos)
+            .ToListAsync();
+    }
+
+    public async Task AtualizarAsync(Cliente cliente)
+    {
+        _context.Clientes.Update(cliente);
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task RemoverAsync(int id)
+    {
+        var cliente = await _context.Clientes.FindAsync(id);
+        if (cliente != null)
+        {
+            _context.Clientes.Remove(cliente);
+            await _context.SaveChangesAsync();
+        }
+    }
+
+    public async Task<bool> ExisteAsync(int id)
+    {
+        return await _context.Clientes.AnyAsync(c => c.ClienteId == id);
+    }
 }

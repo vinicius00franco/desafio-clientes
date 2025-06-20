@@ -1,5 +1,35 @@
-@ApiBackend_HostAddress = http://localhost:5008
+@ApiBackend_HostAddress = http://localhost:5009
 
+### Criar novo cliente
+POST {{ApiBackend_HostAddress}}/api/clientes
+Content-Type: application/json
+
+{
+  "nome": "João Silva",
+  "cep": "01310-100",
+  "numero": "123",
+  "complemento": "Apt 45",
+  "contatos": [
+    {
+      "tipo": "Email",
+      "valor": "joao.silva@email.com"
+    },
+    {
+      "tipo": "Telefone",
+      "valor": "(11) 99999-9999"
+    }
+  ]
+}
+
+### Obter cliente por ID
+GET {{ApiBackend_HostAddress}}/api/clientes/1
+Accept: application/json
+
+### Listar todos os clientes
+GET {{ApiBackend_HostAddress}}/api/clientes
+Accept: application/json
+
+### WeatherForecast (endpoint padrão)
 GET {{ApiBackend_HostAddress}}/weatherforecast/
 Accept: application/json
 
