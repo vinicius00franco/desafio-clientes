@@ -14,4 +14,21 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.6" />
   </ItemGroup>
 
+  <!-- Ensure SQL scripts are copied to output directory -->
+  <ItemGroup>
+    <Content Include="Data\Scripts\**\*.sql">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Data\Scripts\README.md">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <!-- Create script directories if they don't exist -->
+  <Target Name="EnsureScriptDirectories" BeforeTargets="PrepareForBuild">
+    <MakeDir Directories="$(ProjectDir)Data\Scripts\PostDeployment" Condition="!Exists('$(ProjectDir)Data\Scripts\PostDeployment')" />
+    <MakeDir Directories="$(ProjectDir)Data\Scripts\Seeds" Condition="!Exists('$(ProjectDir)Data\Scripts\Seeds')" />
+    <MakeDir Directories="$(ProjectDir)Data\Scripts\Views" Condition="!Exists('$(ProjectDir)Data\Scripts\Views')" />
+  </Target>
+
 </Project>

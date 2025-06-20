@@ -48,9 +48,32 @@ public class DatabaseInitializationService
             // Caminho base para os scripts
             var scriptBasePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Data", "Scripts");
             
+            // Caminho para scripts de post-deployment
+            var postDeploymentPath = Path.Combine(scriptBasePath, "PostDeployment");
+            
+            // Verificar se o diretório existe e criar se necessário
+            if (!Directory.Exists(scriptBasePath))
+            {
+                _logger.LogWarning($"Diretório base de scripts não encontrado em: {scriptBasePath}. Criando...");
+                Directory.CreateDirectory(scriptBasePath);
+            }
+            
+            if (!Directory.Exists(postDeploymentPath))
+            {
+                _logger.LogWarning($"Diretório de scripts post-deployment não encontrado em: {postDeploymentPath}. Criando...");
+                Directory.CreateDirectory(postDeploymentPath);
+            }
+            
+            // Verificar se existem scripts para executar
+            if (!Directory.EnumerateFiles(postDeploymentPath, "*.sql").Any())
+            {
+                _logger.LogInformation($"Nenhum script SQL encontrado no diretório: {postDeploymentPath}");
+                return;
+            }
+            
             // Buscar scripts de PostDeployment em ordem alfabética
             var scriptFiles = Directory.GetFiles(
-                Path.Combine(scriptBasePath, "PostDeployment"), 
+                postDeploymentPath, 
                 "*.sql",
                 SearchOption.TopDirectoryOnly)
                 .OrderBy(f => Path.GetFileName(f))
