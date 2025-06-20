@@ -33,11 +33,13 @@ public class DatabaseInitializationService
         }
     }
 
-    private async Task ExecutePostDeploymentScriptsAsync()
+    private Task ExecutePostDeploymentScriptsAsync()
     {
         // Aqui você pode executar scripts SQL específicos
         // Por exemplo, criar views, procedures, etc.
         
         _logger.LogInformation("Scripts pós-deployment executados");
+        
+        return Task.CompletedTask;
     }
 }
