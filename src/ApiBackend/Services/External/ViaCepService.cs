@@ -26,6 +26,10 @@ public class ViaCepService
             var resultado = await _httpClient.GetFromJsonAsync<EnderecoCepDto>(
                 $"https://viacep.com.br/ws/{cepLimpo}/json/");
 
+            // Verifica se o endereço é válido (a API retorna objeto vazio para CEPs inexistentes)
+            if (resultado == null || string.IsNullOrWhiteSpace(resultado.Cep))
+                return null;
+
             return resultado;
         }
         catch
