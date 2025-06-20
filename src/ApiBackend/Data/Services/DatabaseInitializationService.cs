@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using System.Reflection;
 using System.IO;
 using Microsoft.Extensions.Configuration;
+using System.Text.RegularExpressions;
 
 namespace ApiBackend.Data.Services;
 
@@ -86,10 +87,63 @@ public class DatabaseInitializationService
                 var scriptName = Path.GetFileName(scriptFile);
                 _logger.LogInformation($"Executando script: {scriptName}");
 
+                // Lê o conteúdo do script SQL
                 var sql = File.ReadAllText(scriptFile);
-                await _context.Database.ExecuteSqlRawAsync(sql);
                 
-                _logger.LogInformation($"Script {scriptName} executado com sucesso");
+                // Remover comentários de uma linha para evitar interferência
+                sql = Regex.Replace(sql, "--.*$", "", RegexOptions.Multiline);
+                
+                // Substitui comandos GO por espaço
+                // Este é um caso especial para compatibilidade com Entity Framework e SQL Server
+                sql = sql.Replace("\nGO", "")
+                         .Replace("\ngo", "")
+                         .Replace("\r\nGO", "")
+                         .Replace("\r\ngo", "");
+                
+                try 
+                {
+                    // Executa o script SQL
+                    await _context.Database.ExecuteSqlRawAsync(sql);
+                    _logger.LogInformation($"Script {scriptName} executado com sucesso");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, $"Erro ao executar script {scriptName}. Detalhes: {ex.Message}");
+                    
+                    // Se for um arquivo de trigger que contém múltiplos comandos, tenta executar cada um separadamente
+                    if (scriptName.Contains("Trigger") || scriptName.Contains("trigger"))
+                    {
+                        _logger.LogWarning($"Tentando executar script {scriptName} como comandos separados...");
+                        
+                        // Divide o script em comandos separados
+                        var commands = sql.Split(new[] { "CREATE TRIGGER", "IF EXISTS" }, StringSplitOptions.RemoveEmptyEntries);
+                        
+                        foreach (var cmd in commands)
+                        {
+                            if (string.IsNullOrWhiteSpace(cmd))
+                                continue;
+                                
+                            try
+                            {
+                                var command = cmd.StartsWith("(") ? cmd : "IF EXISTS" + cmd;
+                                if (cmd.Contains("TRIGGER") && !cmd.StartsWith("CREATE"))
+                                    command = "CREATE TRIGGER" + cmd;
+                                    
+                                await _context.Database.ExecuteSqlRawAsync(command);
+                                _logger.LogInformation("Comando executado com sucesso");
+                            }
+                            catch (Exception cmdEx)
+                            {
+                                _logger.LogError(cmdEx, $"Erro ao executar comando: {cmdEx.Message}");
+                            }
+                        }
+                    }
+                    else
+                    {
+                        // Para outros tipos de scripts, apenas registre o erro e continue
+                        _logger.LogError($"Não foi possível executar o script {scriptName}. Continuando com os próximos...");
+                    }
+                }
             }
 
             _logger.LogInformation("Todos os scripts pós-deployment foram executados");
