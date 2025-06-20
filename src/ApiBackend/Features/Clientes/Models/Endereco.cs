@@ -1,6 +1,6 @@
 using System;
 
-namespace Dominio.Entidades;
+namespace ApiBackend.Features.Clientes.Models;
 
 public class Endereco
 {

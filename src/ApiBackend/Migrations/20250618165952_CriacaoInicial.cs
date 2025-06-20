@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace Infra.Migrations
+namespace ApiBackend.Migrations
 {
     /// <inheritdoc />
     public partial class CriacaoInicial : Migration
