@@ -13,14 +13,14 @@ public class ClienteRepository
         _context = context;
     }
 
-    public async Task<int> AdicionarAsync(Cliente cliente)
+    public async Task<int> Adicionar(Cliente cliente)
     {
         _context.Clientes.Add(cliente);
         await _context.SaveChangesAsync();
         return cliente.ClienteId;
     }
 
-    public async Task<Cliente?> ObterPorIdAsync(int id)
+    public async Task<Cliente?> ObterPorId(int id)
     {
         return await _context.Clientes
             .Include(c => c.Enderecos)
@@ -28,7 +28,7 @@ public class ClienteRepository
             .FirstOrDefaultAsync(c => c.ClienteId == id);
     }
 
-    public async Task<IEnumerable<Cliente>> ListarTodosAsync()
+    public async Task<IEnumerable<Cliente>> ListarTodos()
     {
         return await _context.Clientes
             .Include(c => c.Enderecos)
@@ -36,13 +36,13 @@ public class ClienteRepository
             .ToListAsync();
     }
 
-    public async Task AtualizarAsync(Cliente cliente)
+    public async Task Atualizar(Cliente cliente)
     {
         _context.Clientes.Update(cliente);
         await _context.SaveChangesAsync();
     }
 
-    public async Task RemoverAsync(int id)
+    public async Task Remover(int id)
     {
         var cliente = await _context.Clientes
             .Include(c => c.Enderecos)
@@ -58,7 +58,7 @@ public class ClienteRepository
         }
     }
 
-    public async Task<bool> ExisteAsync(int id)
+    public async Task<bool> Existe(int id)
     {
         return await _context.Clientes.AnyAsync(c => c.ClienteId == id);
     }

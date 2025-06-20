@@ -14,7 +14,7 @@ public class ViaCepService
         _httpClient = httpClient;
     }
 
-    public async Task<EnderecoCepDto?> ObterPorCepAsync(string cep)
+    public async Task<EnderecoCepDto?> ObterPorCep(string cep)
     {
         if (string.IsNullOrWhiteSpace(cep))
             return null;

@@ -21,7 +21,7 @@ public class DatabaseInitializationService
         _configuration = configuration;
     }
 
-    public async Task InitializeAsync()
+    public async Task Initialize()
     {
         try
         {
@@ -30,7 +30,7 @@ public class DatabaseInitializationService
             _logger.LogInformation("Migrations aplicadas com sucesso");
 
             // Executa scripts pós-deployment
-            await ExecutePostDeploymentScriptsAsync();
+            await ExecutePostDeploymentScripts();
 
             _logger.LogInformation("Inicialização do banco concluída");
         }
@@ -41,7 +41,7 @@ public class DatabaseInitializationService
         }
     }
 
-    private async Task ExecutePostDeploymentScriptsAsync()
+    private async Task ExecutePostDeploymentScripts()
     {
         try
         {

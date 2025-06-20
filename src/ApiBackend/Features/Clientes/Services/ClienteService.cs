@@ -19,7 +19,7 @@ public class ClienteService
         _mapper = mapper;
     }
 
-    public async Task<int> CriarClienteAsync(NovoClienteDto dto)
+    public async Task<int> CriarCliente(NovoClienteDto dto)
     {
         // Validações de negócio
         if (string.IsNullOrWhiteSpace(dto.Nome))
@@ -29,7 +29,7 @@ public class ClienteService
             throw new ArgumentException("Pelo menos um contato é obrigatório");
 
         // Buscar informações do CEP (regra de negócio)
-        var infoCep = await _viaCepService.ObterPorCepAsync(dto.Cep);
+        var infoCep = await _viaCepService.ObterPorCep(dto.Cep);
 
         if (infoCep == null)
         {
@@ -40,20 +40,20 @@ public class ClienteService
         var cliente = ConstruirCliente(dto, infoCep);
 
         // Persistir via Repository
-        return await _clienteRepository.AdicionarAsync(cliente);
+        return await _clienteRepository.Adicionar(cliente);
     }
 
-    public async Task<Cliente?> ObterPorIdAsync(int id)
+    public async Task<Cliente?> ObterPorId(int id)
     {
         if (id <= 0)
             throw new ArgumentException("ID deve ser maior que zero");
 
-        return await _clienteRepository.ObterPorIdAsync(id);
+        return await _clienteRepository.ObterPorId(id);
     }
 
-    public async Task<IEnumerable<Cliente>> ListarTodosAsync()
+    public async Task<IEnumerable<Cliente>> ListarTodos()
     {
-        return await _clienteRepository.ListarTodosAsync();
+        return await _clienteRepository.ListarTodos();
     }
 
     private Cliente ConstruirCliente(NovoClienteDto dto, EnderecoCepDto infoCep)

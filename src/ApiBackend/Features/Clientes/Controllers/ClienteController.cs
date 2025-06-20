@@ -21,7 +21,7 @@ public class ClienteController : ControllerBase
     {
         try
         {
-            var clienteId = await _clienteService.CriarClienteAsync(dto);
+            var clienteId = await _clienteService.CriarCliente(dto);
             return CreatedAtAction(nameof(ObterPorId), new { id = clienteId }, new { id = clienteId });
         }
         catch (InvalidOperationException ex)
@@ -37,7 +37,7 @@ public class ClienteController : ControllerBase
     [HttpGet("{id:int}")]
     public async Task<IActionResult> ObterPorId(int id)
     {
-        var cliente = await _clienteService.ObterPorIdAsync(id);
+        var cliente = await _clienteService.ObterPorId(id);
 
         if (cliente == null)
             return NotFound(new { erro = "Cliente não encontrado" });
@@ -48,7 +48,7 @@ public class ClienteController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> ListarTodos()
     {
-        var clientes = await _clienteService.ListarTodosAsync();
+        var clientes = await _clienteService.ListarTodos();
         return Ok(clientes);
     }
 }
