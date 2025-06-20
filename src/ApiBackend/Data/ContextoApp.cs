@@ -8,6 +8,7 @@ public class ContextoApp : DbContext
     public DbSet<Cliente> Clientes => Set<Cliente>();
     public DbSet<Endereco> Enderecos => Set<Endereco>();
     public DbSet<Contato> Contatos => Set<Contato>();
+    public DbSet<HistoricoCliente> HistoricoClientes => Set<HistoricoCliente>();
 
     public ContextoApp(DbContextOptions<ContextoApp> options) : base(options) { }
 
@@ -41,6 +42,18 @@ public class ContextoApp : DbContext
         {
             ct.Property(p => p.ContatoId)
                 .HasDefaultValueSql("NEXT VALUE FOR seq_contato");
+        });
+
+        mb.Entity<HistoricoCliente>(h =>
+        {
+            h.Property(p => p.HistoricoId)
+                .UseIdentityColumn();
+            h.Property(p => p.Nome)
+                .HasMaxLength(255);
+            h.Property(p => p.DataAlteracaoUtc)
+                .HasDefaultValueSql("GETUTCDATE()");
+            h.Property(p => p.Operacao)
+                .HasMaxLength(20);
         });
     }
 }
