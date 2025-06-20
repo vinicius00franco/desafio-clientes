@@ -20,12 +20,12 @@ public class ViaCepService
             return null;
 
         var cepLimpo = cep.Replace("-", "").Replace(".", "");
-        
+
         try
         {
             var resultado = await _httpClient.GetFromJsonAsync<EnderecoCepDto>(
                 $"https://viacep.com.br/ws/{cepLimpo}/json/");
-            
+
             return resultado;
         }
         catch

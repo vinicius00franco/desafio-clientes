@@ -1,5 +1,6 @@
 using ApiBackend.Data;
 using ApiBackend.Data.Services;
+using ApiBackend.Features.Clientes.Repositories;
 using ApiBackend.Features.Clientes.Services;
 using ApiBackend.Services.External;
 using Microsoft.EntityFrameworkCore;

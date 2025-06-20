@@ -44,9 +44,15 @@ public class ClienteRepository
 
     public async Task RemoverAsync(int id)
     {
-        var cliente = await _context.Clientes.FindAsync(id);
+        var cliente = await _context.Clientes
+            .Include(c => c.Enderecos)
+            .Include(c => c.Contatos)
+            .FirstOrDefaultAsync(c => c.ClienteId == id);
+
         if (cliente != null)
         {
+            // A geração de histórico será feita automaticamente pelo banco de dados
+            // através de triggers quando a operação de remoção for executada
             _context.Clientes.Remove(cliente);
             await _context.SaveChangesAsync();
         }

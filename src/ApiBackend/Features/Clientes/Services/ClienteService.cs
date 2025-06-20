@@ -30,7 +30,7 @@ public class ClienteService
 
         // Buscar informações do CEP (regra de negócio)
         var infoCep = await _viaCepService.ObterPorCepAsync(dto.Cep);
-        
+
         if (infoCep == null)
         {
             throw new InvalidOperationException($"CEP {dto.Cep} não encontrado.");

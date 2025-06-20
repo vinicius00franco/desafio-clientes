@@ -38,7 +38,7 @@ public class ClienteController : ControllerBase
     public async Task<IActionResult> ObterPorId(int id)
     {
         var cliente = await _clienteService.ObterPorIdAsync(id);
-        
+
         if (cliente == null)
             return NotFound(new { erro = "Cliente não encontrado" });
 
