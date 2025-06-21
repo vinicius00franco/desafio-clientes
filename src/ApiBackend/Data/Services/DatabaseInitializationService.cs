@@ -76,49 +76,15 @@ namespace ApiBackend.Data.Services
             var sql = File.ReadAllText(scriptFile);
             sql = Regex.Replace(sql, @"--.*$", "", RegexOptions.Multiline);
 
+            // Ignorar arquivos de trigger - eles agora são gerenciados via migrations
             if (scriptName.Contains("Trigger", StringComparison.OrdinalIgnoreCase))
-                await ExecuteTriggerScript(sql, scriptName);
-            else
-                await ExecuteRegularScript(sql, scriptName);
-        }
-
-        private async Task ExecuteTriggerScript(string sql, string scriptName)
-        {
-            var triggerBlocks = ExtractTriggerBlocks(sql);
-
-            foreach (var block in triggerBlocks)
             {
-                if (string.IsNullOrWhiteSpace(block))
-                    continue;
-
-                try
-                {
-                    await _context.Database.ExecuteSqlRawAsync(block);
-                    _logger.LogInformation($"Trigger executado com sucesso ({scriptName})");
-                }
-                catch (DbUpdateException dbEx) when (dbEx.InnerException is SqlException sqlEx
-                        && (sqlEx.Number == 2714  // objeto já existe
-                            || sqlEx.Number == 3701  // objeto não existe ao dropar
-                            || sqlEx.Number == 111)) // CREATE TRIGGER deve ser primeira instrução
-                {
-                    _logger.LogWarning(
-                        $"Trigger ignorado ({scriptName}) – {GetSqlErrorMessage(sqlEx.Number)}: {sqlEx.Message}"
-                    );
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, $"Erro ao executar trigger de {scriptName}: {ex.Message}");
-                }
+                _logger.LogInformation($"Script de trigger ignorado ({scriptName}) - triggers são gerenciados via migrations");
+                return;
             }
-        }
 
-        private string GetSqlErrorMessage(int errorNumber) => errorNumber switch
-        {
-            2714 => "Objeto já existe",
-            3701 => "Objeto não existe ao dropar",
-            111  => "CREATE TRIGGER deve ser primeira instrução",
-            _    => "Erro SQL"
-        };
+            await ExecuteRegularScript(sql, scriptName);
+        }
 
         private async Task ExecuteRegularScript(string sql, string scriptName)
         {
@@ -150,46 +116,6 @@ namespace ApiBackend.Data.Services
                     _logger.LogError(ex, $"Erro ao executar batch de {scriptName}: {ex.Message}");
                 }
             }
-        }
-
-        private List<string> ExtractTriggerBlocks(string sql)
-        {
-            var blocks = new List<string>();
-
-            // Padrão completo: IF EXISTS ... DROP + CREATE TRIGGER
-            var fullPattern = @"(?s)(IF\s+EXISTS\s*\([^)]+\)\s*BEGIN\s*DROP\s+TRIGGER[^;]+?;\s*END)\s*(CREATE\s+TRIGGER[^;]*?END;?)";
-            var fullMatches = Regex.Matches(sql, fullPattern, RegexOptions.IgnoreCase);
-
-            foreach (Match match in fullMatches)
-            {
-                blocks.Add(match.Groups[1].Value.Trim());
-                blocks.Add(match.Groups[2].Value.Trim());
-            }
-
-            // Se não achou, extrai DROP e CREATE separadamente
-            if (blocks.Count == 0)
-            {
-                var dropPattern = @"IF\s+EXISTS\s*\([^)]+\)\s*BEGIN\s*DROP\s+TRIGGER[^;]+?;\s*END";
-                foreach (Match m in Regex.Matches(sql, dropPattern, RegexOptions.IgnoreCase))
-                    blocks.Add(m.Value.Trim());
-
-                var createPattern = @"CREATE\s+TRIGGER\s+[^;]*?END;?";
-                foreach (Match m in Regex.Matches(sql, createPattern, RegexOptions.IgnoreCase | RegexOptions.Singleline))
-                    blocks.Add(m.Value.Trim());
-            }
-
-            // Fallback final: split por CREATE TRIGGER
-            if (blocks.Count == 0)
-            {
-                foreach (var part in Regex.Split(sql, @"(?=CREATE\s+TRIGGER)", RegexOptions.IgnoreCase))
-                {
-                    var t = part.Trim();
-                    if (t.StartsWith("CREATE", StringComparison.OrdinalIgnoreCase))
-                        blocks.Add(t);
-                }
-            }
-
-            return blocks;
         }
     }
 }
