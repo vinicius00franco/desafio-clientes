@@ -83,6 +83,14 @@ namespace ApiBackend.Data.Services
                 return;
             }
 
+            // Ignorar arquivos de views - eles agora são gerenciados via migrations
+            if (scriptName.Contains("Views", StringComparison.OrdinalIgnoreCase) || 
+                scriptName.Contains("View", StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogInformation($"Script de view ignorado ({scriptName}) - views são gerenciadas via migrations");
+                return;
+            }
+
             await ExecuteRegularScript(sql, scriptName);
         }
 
