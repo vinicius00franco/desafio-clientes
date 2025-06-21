@@ -1,83 +1,61 @@
-using Microsoft.EntityFrameworkCore;
-using System.Reflection;
+using System;
+using System.Collections.Generic;
 using System.IO;
-using Microsoft.Extensions.Configuration;
+using System.Linq;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
+using Microsoft.Data.SqlClient;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
-namespace ApiBackend.Data.Services;
-
-public class DatabaseInitializationService
+namespace ApiBackend.Data.Services
 {
-    private readonly ContextoApp _context;
-    private readonly ILogger<DatabaseInitializationService> _logger;
-    private readonly IConfiguration _configuration;
-
-    public DatabaseInitializationService(
-        ContextoApp context, 
-        ILogger<DatabaseInitializationService> logger,
-        IConfiguration configuration)
+    public class DatabaseInitializationService
     {
-        _context = context;
-        _logger = logger;
-        _configuration = configuration;
-    }
+        private readonly ContextoApp _context;
+        private readonly ILogger<DatabaseInitializationService> _logger;
+        private readonly IConfiguration _configuration;
 
-    public async Task Initialize()
-    {
-        try
+        public DatabaseInitializationService(
+            ContextoApp context,
+            ILogger<DatabaseInitializationService> logger,
+            IConfiguration configuration)
         {
-            // Aplica migrations pendentes
-            await _context.Database.MigrateAsync();
-            _logger.LogInformation("Migrations aplicadas com sucesso");
-
-            // Executa scripts pós-deployment
-            await ExecutePostDeploymentScripts();
-
-            _logger.LogInformation("Inicialização do banco concluída");
+            _context = context;
+            _logger = logger;
+            _configuration = configuration;
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Erro durante inicialização do banco");
-            throw;
-        }
-    }
 
-    private async Task ExecutePostDeploymentScripts()
-    {
-        try
+        public async Task Initialize()
         {
-            // Caminho base para os scripts
+            try
+            {
+                await _context.Database.MigrateAsync();
+                _logger.LogInformation("Migrations aplicadas com sucesso");
+
+                await ExecutePostDeploymentScripts();
+
+                _logger.LogInformation("Inicialização do banco concluída");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erro durante inicialização do banco");
+                throw;
+            }
+        }
+
+        private async Task ExecutePostDeploymentScripts()
+        {
             var scriptBasePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Data", "Scripts");
-            
-            // Caminho para scripts de post-deployment
             var postDeploymentPath = Path.Combine(scriptBasePath, "PostDeployment");
-            
-            // Verificar se o diretório existe e criar se necessário
-            if (!Directory.Exists(scriptBasePath))
-            {
-                _logger.LogWarning($"Diretório base de scripts não encontrado em: {scriptBasePath}. Criando...");
-                Directory.CreateDirectory(scriptBasePath);
-            }
-            
+
             if (!Directory.Exists(postDeploymentPath))
-            {
-                _logger.LogWarning($"Diretório de scripts post-deployment não encontrado em: {postDeploymentPath}. Criando...");
                 Directory.CreateDirectory(postDeploymentPath);
-            }
-            
-            // Verificar se existem scripts para executar
-            if (!Directory.EnumerateFiles(postDeploymentPath, "*.sql").Any())
-            {
-                _logger.LogInformation($"Nenhum script SQL encontrado no diretório: {postDeploymentPath}");
-                return;
-            }
-            
-            // Buscar scripts de PostDeployment em ordem alfabética
-            var scriptFiles = Directory.GetFiles(
-                postDeploymentPath, 
-                "*.sql",
-                SearchOption.TopDirectoryOnly)
-                .OrderBy(f => Path.GetFileName(f))
+
+            var scriptFiles = Directory
+                .GetFiles(postDeploymentPath, "*.sql", SearchOption.TopDirectoryOnly)
+                .OrderBy(Path.GetFileName)
                 .ToList();
 
             _logger.LogInformation($"Encontrados {scriptFiles.Count} scripts para execução");
@@ -87,71 +65,131 @@ public class DatabaseInitializationService
                 var scriptName = Path.GetFileName(scriptFile);
                 _logger.LogInformation($"Executando script: {scriptName}");
 
-                // Lê o conteúdo do script SQL
-                var sql = File.ReadAllText(scriptFile);
-                
-                // Remover comentários de uma linha para evitar interferência
-                sql = Regex.Replace(sql, "--.*$", "", RegexOptions.Multiline);
-                
-                // Substitui comandos GO por espaço
-                // Este é um caso especial para compatibilidade com Entity Framework e SQL Server
-                sql = sql.Replace("\nGO", "")
-                         .Replace("\ngo", "")
-                         .Replace("\r\nGO", "")
-                         .Replace("\r\ngo", "");
-                
-                try 
+                await ExecuteScript(scriptFile, scriptName);
+            }
+
+            _logger.LogInformation("Todos os scripts pós-deployment foram processados");
+        }
+
+        private async Task ExecuteScript(string scriptFile, string scriptName)
+        {
+            var sql = File.ReadAllText(scriptFile);
+            sql = Regex.Replace(sql, @"--.*$", "", RegexOptions.Multiline);
+
+            if (scriptName.Contains("Trigger", StringComparison.OrdinalIgnoreCase))
+                await ExecuteTriggerScript(sql, scriptName);
+            else
+                await ExecuteRegularScript(sql, scriptName);
+        }
+
+        private async Task ExecuteTriggerScript(string sql, string scriptName)
+        {
+            var triggerBlocks = ExtractTriggerBlocks(sql);
+
+            foreach (var block in triggerBlocks)
+            {
+                if (string.IsNullOrWhiteSpace(block))
+                    continue;
+
+                try
                 {
-                    // Executa o script SQL
-                    await _context.Database.ExecuteSqlRawAsync(sql);
-                    _logger.LogInformation($"Script {scriptName} executado com sucesso");
+                    await _context.Database.ExecuteSqlRawAsync(block);
+                    _logger.LogInformation($"Trigger executado com sucesso ({scriptName})");
+                }
+                catch (DbUpdateException dbEx) when (dbEx.InnerException is SqlException sqlEx
+                        && (sqlEx.Number == 2714  // objeto já existe
+                            || sqlEx.Number == 3701  // objeto não existe ao dropar
+                            || sqlEx.Number == 111)) // CREATE TRIGGER deve ser primeira instrução
+                {
+                    _logger.LogWarning(
+                        $"Trigger ignorado ({scriptName}) – {GetSqlErrorMessage(sqlEx.Number)}: {sqlEx.Message}"
+                    );
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, $"Erro ao executar script {scriptName}. Detalhes: {ex.Message}");
-                    
-                    // Se for um arquivo de trigger que contém múltiplos comandos, tenta executar cada um separadamente
-                    if (scriptName.Contains("Trigger") || scriptName.Contains("trigger"))
-                    {
-                        _logger.LogWarning($"Tentando executar script {scriptName} como comandos separados...");
-                        
-                        // Divide o script em comandos separados
-                        var commands = sql.Split(new[] { "CREATE TRIGGER", "IF EXISTS" }, StringSplitOptions.RemoveEmptyEntries);
-                        
-                        foreach (var cmd in commands)
-                        {
-                            if (string.IsNullOrWhiteSpace(cmd))
-                                continue;
-                                
-                            try
-                            {
-                                var command = cmd.StartsWith("(") ? cmd : "IF EXISTS" + cmd;
-                                if (cmd.Contains("TRIGGER") && !cmd.StartsWith("CREATE"))
-                                    command = "CREATE TRIGGER" + cmd;
-                                    
-                                await _context.Database.ExecuteSqlRawAsync(command);
-                                _logger.LogInformation("Comando executado com sucesso");
-                            }
-                            catch (Exception cmdEx)
-                            {
-                                _logger.LogError(cmdEx, $"Erro ao executar comando: {cmdEx.Message}");
-                            }
-                        }
-                    }
-                    else
-                    {
-                        // Para outros tipos de scripts, apenas registre o erro e continue
-                        _logger.LogError($"Não foi possível executar o script {scriptName}. Continuando com os próximos...");
-                    }
+                    _logger.LogError(ex, $"Erro ao executar trigger de {scriptName}: {ex.Message}");
+                }
+            }
+        }
+
+        private string GetSqlErrorMessage(int errorNumber) => errorNumber switch
+        {
+            2714 => "Objeto já existe",
+            3701 => "Objeto não existe ao dropar",
+            111  => "CREATE TRIGGER deve ser primeira instrução",
+            _    => "Erro SQL"
+        };
+
+        private async Task ExecuteRegularScript(string sql, string scriptName)
+        {
+            var batches = Regex.Split(
+                sql,
+                @"^\s*GO\s*$(?:\r\n?|\n)?",
+                RegexOptions.Multiline | RegexOptions.IgnoreCase
+            );
+
+            foreach (var batch in batches)
+            {
+                if (string.IsNullOrWhiteSpace(batch))
+                    continue;
+
+                try
+                {
+                    await _context.Database.ExecuteSqlRawAsync(batch);
+                    _logger.LogInformation($"Batch executado com sucesso ({scriptName})");
+                }
+                catch (DbUpdateException dbEx) when (dbEx.InnerException is SqlException sqlEx
+                        && (sqlEx.Number == 2714 || sqlEx.Number == 3701))
+                {
+                    _logger.LogWarning(
+                        $"Batch ignorado ({scriptName}) – objeto já existe ou não existe: {sqlEx.Message}"
+                    );
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, $"Erro ao executar batch de {scriptName}: {ex.Message}");
+                }
+            }
+        }
+
+        private List<string> ExtractTriggerBlocks(string sql)
+        {
+            var blocks = new List<string>();
+
+            // Padrão completo: IF EXISTS ... DROP + CREATE TRIGGER
+            var fullPattern = @"(?s)(IF\s+EXISTS\s*\([^)]+\)\s*BEGIN\s*DROP\s+TRIGGER[^;]+?;\s*END)\s*(CREATE\s+TRIGGER[^;]*?END;?)";
+            var fullMatches = Regex.Matches(sql, fullPattern, RegexOptions.IgnoreCase);
+
+            foreach (Match match in fullMatches)
+            {
+                blocks.Add(match.Groups[1].Value.Trim());
+                blocks.Add(match.Groups[2].Value.Trim());
+            }
+
+            // Se não achou, extrai DROP e CREATE separadamente
+            if (blocks.Count == 0)
+            {
+                var dropPattern = @"IF\s+EXISTS\s*\([^)]+\)\s*BEGIN\s*DROP\s+TRIGGER[^;]+?;\s*END";
+                foreach (Match m in Regex.Matches(sql, dropPattern, RegexOptions.IgnoreCase))
+                    blocks.Add(m.Value.Trim());
+
+                var createPattern = @"CREATE\s+TRIGGER\s+[^;]*?END;?";
+                foreach (Match m in Regex.Matches(sql, createPattern, RegexOptions.IgnoreCase | RegexOptions.Singleline))
+                    blocks.Add(m.Value.Trim());
+            }
+
+            // Fallback final: split por CREATE TRIGGER
+            if (blocks.Count == 0)
+            {
+                foreach (var part in Regex.Split(sql, @"(?=CREATE\s+TRIGGER)", RegexOptions.IgnoreCase))
+                {
+                    var t = part.Trim();
+                    if (t.StartsWith("CREATE", StringComparison.OrdinalIgnoreCase))
+                        blocks.Add(t);
                 }
             }
 
-            _logger.LogInformation("Todos os scripts pós-deployment foram executados");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Erro ao executar scripts pós-deployment");
-            throw;
+            return blocks;
         }
     }
 }

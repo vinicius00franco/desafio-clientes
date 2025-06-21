@@ -23,6 +23,7 @@ builder.Services.AddAutoMapper(typeof(Program));
 
 // Add HttpClient for ViaCEP
 builder.Services.AddHttpClient<ViaCepService>();
+builder.Services.AddScoped<IViaCepService, ViaCepService>();
 
 // Add application services
 builder.Services.AddScoped<ClienteRepository>();
@@ -58,3 +59,6 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
+// Tornar a classe Program acessível para testes de integração
+public partial class Program { }

@@ -9,10 +9,10 @@ namespace ApiBackend.Features.Clientes.Services;
 public class ClienteService
 {
     private readonly ClienteRepository _clienteRepository;
-    private readonly ViaCepService _viaCepService;
+    private readonly IViaCepService _viaCepService;
     private readonly IMapper _mapper;
 
-    public ClienteService(ClienteRepository clienteRepository, ViaCepService viaCepService, IMapper mapper)
+    public ClienteService(ClienteRepository clienteRepository, IViaCepService viaCepService, IMapper mapper)
     {
         _clienteRepository = clienteRepository;
         _viaCepService = viaCepService;

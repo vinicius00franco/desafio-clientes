@@ -5,7 +5,7 @@ using ApiBackend.Features.Clientes.Dtos;
 
 namespace ApiBackend.Services.External;
 
-public class ViaCepService
+public class ViaCepService : IViaCepService
 {
     private readonly HttpClient _httpClient;
 
