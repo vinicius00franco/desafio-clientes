@@ -1,0 +1,11 @@
+global using Xunit;
+global using FluentAssertions;
+global using System.Text.Json;
+global using Microsoft.AspNetCore.Mvc.Testing;
+global using Microsoft.Extensions.DependencyInjection;
+global using Microsoft.EntityFrameworkCore;
+global using ApiBackend.Data;
+global using ApiBackend.Features.Clientes.Models;
+global using ApiBackend.Features.Clientes.Dtos;
+global using ApiBackend.Features.Clientes.Dtos.Contatos;
+global using ApiBackend.IntegrationTests.Infrastructure;
