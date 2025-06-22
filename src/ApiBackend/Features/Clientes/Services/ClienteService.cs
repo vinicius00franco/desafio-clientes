@@ -61,6 +61,8 @@ public class ClienteService
         // Mapear DTO para entidade
         var cliente = _mapper.Map<Cliente>(dto);
 
+        cliente.Contatos.Clear(); // Remover mapeamento automático de contatos
+
         // Adicionar endereço com informações do ViaCEP (regra de negócio)
         var endereco = new Endereco
         {

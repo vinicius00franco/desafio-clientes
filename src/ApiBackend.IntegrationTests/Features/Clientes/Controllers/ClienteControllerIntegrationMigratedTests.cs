@@ -38,7 +38,7 @@ public class ClienteControllerIntegrationMigratedTests : IntegrationTestBase
         var responseObj = JsonSerializer.Deserialize<Dictionary<string, object>>(responseContent);
         responseObj.Should().ContainKey("id");
         
-        var clienteId = JsonSerializer.Deserialize<int>(responseObj["id"].ToString()!);
+        var clienteId = JsonSerializer.Deserialize<int>(responseObj!["id"].ToString()!);
         clienteId.Should().BePositive();
         
         // Verificar que o cliente foi realmente criado no banco
@@ -109,13 +109,15 @@ public class ClienteControllerIntegrationMigratedTests : IntegrationTestBase
     {
         // Arrange - Primeiro criar um cliente com nome único para este teste
         var uniqueName = $"João Silva Test {Guid.NewGuid():N}";
-        var dto = CriarNovoClienteDtoValido(uniqueName, $"test.{Guid.NewGuid():N}@email.com");
+        var email = $"test.{Guid.NewGuid():N}@email.com";
+        var dto = CriarNovoClienteDtoValido(uniqueName, email);
+
         var createResponse = await Client.PostAsJsonAsync("/api/clientes", dto);
         createResponse.StatusCode.Should().Be(HttpStatusCode.Created);
-        
+
         var createContent = await createResponse.Content.ReadAsStringAsync();
         var createObj = JsonSerializer.Deserialize<Dictionary<string, object>>(createContent);
-        var clienteId = JsonSerializer.Deserialize<int>(createObj["id"].ToString()!);
+        var clienteId = JsonSerializer.Deserialize<int>(createObj!["id"].ToString()!);
 
         // Act
         var response = await Client.GetAsync($"/api/clientes/{clienteId}");
@@ -154,7 +156,7 @@ public class ClienteControllerIntegrationMigratedTests : IntegrationTestBase
         var telefoneContato = cliente.Contatos.FirstOrDefault(c => c.Tipo == "Telefone");
         
         emailContato.Should().NotBeNull();
-        emailContato!.Valor.Should().Be("joao.silva@email.com");
+        emailContato!.Valor.Should().Be(email);
         emailContato.ClienteId.Should().Be(clienteId);
         
         telefoneContato.Should().NotBeNull();
@@ -181,7 +183,7 @@ public class ClienteControllerIntegrationMigratedTests : IntegrationTestBase
         var responseObj = JsonSerializer.Deserialize<Dictionary<string, object>>(responseContent);
         responseObj.Should().ContainKey("erro");
         
-        var erro = responseObj["erro"].ToString();
+        var erro = responseObj!["erro"].ToString();
         erro.Should().Contain("Cliente não encontrado");
     }
 
@@ -208,7 +210,7 @@ public class ClienteControllerIntegrationMigratedTests : IntegrationTestBase
             
             var createContent = await createResponse.Content.ReadAsStringAsync();
             var createObj = JsonSerializer.Deserialize<Dictionary<string, object>>(createContent);
-            var clienteId = JsonSerializer.Deserialize<int>(createObj["id"].ToString()!);
+            var clienteId = JsonSerializer.Deserialize<int>(createObj!["id"].ToString()!);
             clienteIds.Add(clienteId);
         }
 
@@ -235,7 +237,7 @@ public class ClienteControllerIntegrationMigratedTests : IntegrationTestBase
         }
         
         // Verificar estrutura de cada cliente na lista
-        foreach (var cliente in clientesRetornados.Where(c => clienteIds.Contains(c.ClienteId)))
+        foreach (var cliente in clientesRetornados!.Where(c => clienteIds.Contains(c.ClienteId)))
         {
             cliente.ClienteId.Should().BePositive();
             cliente.Nome.Should().NotBeNullOrEmpty();
@@ -285,7 +287,7 @@ public class ClienteControllerIntegrationMigratedTests : IntegrationTestBase
         
         var createContent = await responsePost.Content.ReadAsStringAsync();
         var createObj = JsonSerializer.Deserialize<Dictionary<string, object>>(createContent);
-        var clienteId = JsonSerializer.Deserialize<int>(createObj["id"].ToString()!);
+        var clienteId = JsonSerializer.Deserialize<int>(createObj!["id"].ToString()!);
 
         // Act & Assert para ObterPorId
         var responseGet = await Client.GetAsync($"/api/clientes/{clienteId}");
