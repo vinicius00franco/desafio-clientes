@@ -5,12 +5,20 @@ using FluentAssertions;
 
 namespace ApiBackend.IntegrationTests.Features.Clientes.Controllers;
 
-public class ClienteControllerIntegrationTests : IntegrationTestBase
+/// <summary>
+/// Testes de integração do ClienteController:
+/// - Criação de cliente válido (201 Created e header Location)
+/// - Listagem de clientes (lista vazia e com itens)
+/// - Validações de entrada inválida (400 BadRequest)
+/// - Isolamento do banco entre testes
+/// </summary>
+public class ClienteControllerIntregracaoTests : IntegrationTestBase
 {
     [Fact]
+    // Testa criação de um cliente válido e verifica se retorna 201 Created com Location
     public async Task POST_Clientes_DeveRetornar201_QuandoClienteValido()
     {
-        // Arrange
+        // Arrange: DTO com todos os campos obrigatórios e contatos válidos
         var novoClienteDto = new
         {
             nome = "João Silva",
@@ -24,10 +32,10 @@ public class ClienteControllerIntegrationTests : IntegrationTestBase
             }
         };
 
-        // Act
+        // Act: envia requisição para o endpoint de clientes
         var response = await Client.PostAsJsonAsync("/api/clientes", novoClienteDto);
 
-        // Assert
+        // Assert: confere status e header Location apontando para o recurso criado
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         
         var location = response.Headers.Location;
@@ -36,12 +44,13 @@ public class ClienteControllerIntegrationTests : IntegrationTestBase
     }
 
     [Fact]
+    // Verifica GET retorna 200 e lista vazia quando não há clientes
     public async Task GET_Clientes_DeveRetornar200_ComListaVazia_QuandoNaoHaClientes()
     {
-        // Act
+        // Act: consulta todos os clientes
         var response = await Client.GetAsync("/api/clientes");
 
-        // Assert
+        // Assert: verifica status OK e body igual a "[]"
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         
         var content = await response.Content.ReadAsStringAsync();
@@ -49,9 +58,10 @@ public class ClienteControllerIntegrationTests : IntegrationTestBase
     }
 
     [Fact]
+    // Insere um cliente diretamente no banco e valida que o GET retorna seus dados
     public async Task GET_Clientes_DeveRetornar200_ComListaClientes_QuandoHaClientes()
     {
-        // Arrange - Criar cliente diretamente no banco para teste
+        // Arrange: seed de dados no banco para simular cliente existente
         using var scope = Factory.Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<ContextoApp>();
         
@@ -81,10 +91,10 @@ public class ClienteControllerIntegrationTests : IntegrationTestBase
         context.Clientes.Add(cliente);
         await context.SaveChangesAsync();
 
-        // Act
+        // Act: busca lista de clientes via API
         var response = await Client.GetAsync("/api/clientes");
 
-        // Assert
+        // Assert: confirma status OK e presença do nome e email cadastrados
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         
         var content = await response.Content.ReadAsStringAsync();
@@ -93,9 +103,10 @@ public class ClienteControllerIntegrationTests : IntegrationTestBase
     }
 
     [Fact]
+    // Testa validação de entrada inválida e espera BadRequest
     public async Task POST_Clientes_DeveRetornar400_QuandoClienteInvalido()
     {
-        // Arrange
+        // Arrange: DTO com nome vazio, CEP inválido e contatos mal formados
         var clienteInvalido = new
         {
             nome = "", // Nome vazio
@@ -108,24 +119,24 @@ public class ClienteControllerIntegrationTests : IntegrationTestBase
             }
         };
 
-        // Act
+        // Act: envia dados inválidos e aguarda resposta
         var response = await Client.PostAsJsonAsync("/api/clientes", clienteInvalido);
 
-        // Assert
+        // Assert: confirma retorno de BadRequest
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
     [Fact]
+    // Garante que cada teste execute em banco isolado, sem dados remanescentes
     public async Task Database_DeveEstarIsolado_EntreTestesDiferentes()
     {
-        // Arrange & Act
+        // Arrange & Act: obtém contagem de clientes no contexto atual
         using var scope = Factory.Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<ContextoApp>();
         
         var clientesCount = await context.Clientes.CountAsync();
 
-        // Assert
-        // O banco deve estar vazio em cada teste (exceto nos testes onde criamos dados especificamente)
+        // Assert: espera zero clientes, evidenciando isolamento entre testes
         clientesCount.Should().Be(0);
     }
 }

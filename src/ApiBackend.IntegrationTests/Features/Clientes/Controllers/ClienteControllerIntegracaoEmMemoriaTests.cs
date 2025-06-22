@@ -13,7 +13,7 @@ namespace ApiBackend.IntegrationTests.Features.Clientes.Controllers;
 /// Integration tests migrated from unit tests in ClienteControllerTests.cs
 /// These tests execute against a real in-memory database instead of using mocks
 /// </summary>
-public class ClienteControllerIntegrationMigratedTests : IntegrationTestBase
+public class ClienteControllerIntegracaoEmMemoriaTests : IntegrationTestBase
 {
 
     #region CriarCliente Tests
