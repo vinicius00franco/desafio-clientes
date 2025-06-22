@@ -5,7 +5,7 @@ namespace ApiBackend.IntegrationTests.Features.Clientes.Controllers;
 /// <summary>
 /// Testes de integração básicos para verificar se a infraestrutura está funcionando
 /// </summary>
-public class ClienteControllerRotasEConexaoBancoTests : IntegrationTestBase
+public class ClienteControllerIntegracaoBasicosTests : IntegrationTestBase
 {
     [Fact]
     public async Task Setup_DeveInicializarCorretamente()

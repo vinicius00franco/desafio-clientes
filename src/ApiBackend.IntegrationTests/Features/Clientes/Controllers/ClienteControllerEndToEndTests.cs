@@ -12,7 +12,7 @@ namespace ApiBackend.IntegrationTests.Features.Clientes.Controllers;
 /// - Validações de entrada inválida (400 BadRequest)
 /// - Isolamento do banco entre testes
 /// </summary>
-public class ClienteControllerIntregracaoTests : IntegrationTestBase
+public class ClienteControllerEndToEndTests : IntegrationTestBase
 {
     [Fact]
     // Testa criação de um cliente válido e verifica se retorna 201 Created com Location
