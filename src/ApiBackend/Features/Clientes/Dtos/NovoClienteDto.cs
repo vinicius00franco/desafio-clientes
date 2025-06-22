@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using ApiBackend.Features.Clientes.Dtos;
+using ApiBackend.Features.Clientes.Dtos.Contatos;
 
 namespace ApiBackend.Features.Clientes.Dtos;
 
@@ -24,13 +24,6 @@ public record NovoClienteDto(
 {
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
-        // Exemplo de validação cruzada: proibir CEP específico
-        if (Cep == "00000-000")
-        {
-            yield return new ValidationResult(
-                "CEP não pode ser 00000-000",
-                new[] { nameof(Cep) }
-            );
-        }
+        yield break;
     }
 }

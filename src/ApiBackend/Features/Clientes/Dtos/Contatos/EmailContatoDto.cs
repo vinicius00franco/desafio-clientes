@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
-namespace ApiBackend.Features.Clientes.Dtos;
+namespace ApiBackend.Features.Clientes.Dtos.Contatos;
 
 public record EmailContatoDto(
     [property: Required(ErrorMessage = "Valor do contato é obrigatório.")]

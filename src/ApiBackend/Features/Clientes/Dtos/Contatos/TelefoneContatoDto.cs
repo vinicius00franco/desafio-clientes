@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Text.RegularExpressions;
 
-namespace ApiBackend.Features.Clientes.Dtos;
+namespace ApiBackend.Features.Clientes.Dtos.Contatos;
 
 public record TelefoneContatoDto(
     [property: Required(ErrorMessage = "Valor do contato é obrigatório.")]
