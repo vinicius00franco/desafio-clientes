@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Hosting;
 namespace ApiBackend.IntegrationTests.Infrastructure;
 
 /// <summary>
-/// WebApplicationFactory customizada para testes de integração com LocalDB
+/// WebApplicationFactory customizada para testes de integração com banco em memória
 /// </summary>
 public class CustomWebApplicationFactory : WebApplicationFactory<Program>
 {
@@ -35,12 +35,30 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
             if (dbContextServiceDescriptor != null)
                 services.Remove(dbContextServiceDescriptor);
 
-            // Adicionar DbContext configurado para LocalDB com nome único
+            // Remover todos os serviços do Entity Framework SqlServer existentes
+            var descriptorsToRemove = services.Where(d => 
+                d.ServiceType.FullName?.Contains("Microsoft.EntityFrameworkCore") == true ||
+                d.ImplementationType?.FullName?.Contains("Microsoft.EntityFrameworkCore.SqlServer") == true)
+                .ToList();
+            
+            foreach (var descriptor in descriptorsToRemove)
+            {
+                services.Remove(descriptor);
+            }
+
+            // Remover o serviço de inicialização do banco para evitar execução de migrations em testes
+            var dbInitializerDescriptor = services.SingleOrDefault(d => d.ServiceType == typeof(ApiBackend.Data.Services.IDatabaseInitializationService));
+            if (dbInitializerDescriptor != null)
+                services.Remove(dbInitializerDescriptor);
+
+            // Adicionar DbContext configurado para InMemory com nome único
             services.AddDbContext<ContextoApp>(options =>
             {
-                var connectionString = $"Server=(localdb)\\MSSQLLocalDB;Database={_databaseName};Trusted_Connection=true;MultipleActiveResultSets=true;TrustServerCertificate=true";
-                options.UseSqlServer(connectionString);
+                options.UseInMemoryDatabase(_databaseName);
             });
+
+            // Adicionar um mock do DatabaseInitializationService que não faz nada
+            services.AddScoped<ApiBackend.Data.Services.IDatabaseInitializationService, MockDatabaseInitializationService>();
         });
 
         // Configurar logging específico para testes
@@ -53,41 +71,25 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
     }
 
     /// <summary>
-    /// Inicializa o banco de dados aplicando migrations
+    /// Inicializa o banco de dados criando as entidades necessárias
     /// </summary>
     public async Task InitializeDatabaseAsync()
     {
         using var scope = Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<ContextoApp>();
         
-        // Garantir que o banco seja criado e as migrations aplicadas
+        // Para InMemory, garantir que o banco está criado
         await context.Database.EnsureCreatedAsync();
-        
-        // Aplicar migrations se necessário
-        var pendingMigrations = await context.Database.GetPendingMigrationsAsync();
-        if (pendingMigrations.Any())
-        {
-            await context.Database.MigrateAsync();
-        }
     }
 
     /// <summary>
-    /// Limpa o banco de dados ao final dos testes
+    /// Limpa o banco de dados ao final dos testes (InMemory é automaticamente limpo)
     /// </summary>
     public async Task CleanupDatabaseAsync()
     {
-        using var scope = Services.CreateScope();
-        var context = scope.ServiceProvider.GetRequiredService<ContextoApp>();
-        
-        try
-        {
-            await context.Database.EnsureDeletedAsync();
-        }
-        catch (Exception ex)
-        {
-            // Log do erro mas não falhar o teste
-            Console.WriteLine($"Erro ao limpar banco de dados {_databaseName}: {ex.Message}");
-        }
+        // Para InMemory Database, não é necessário cleanup manual
+        // O banco é automaticamente removido quando o contexto é disposto
+        await Task.CompletedTask;
     }
 
     protected override void Dispose(bool disposing)
@@ -98,5 +100,18 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
             // Será feito no IAsyncLifetime dos testes
         }
         base.Dispose(disposing);
+    }
+}
+
+/// <summary>
+/// Mock do DatabaseInitializationService que não executa migrations para testes
+/// </summary>
+public class MockDatabaseInitializationService : ApiBackend.Data.Services.IDatabaseInitializationService
+{
+    public async Task Initialize()
+    {
+        // Para testes de integração, não executar migrations nem scripts
+        // O banco InMemory já é criado automaticamente com EnsureCreated
+        await Task.CompletedTask;
     }
 }

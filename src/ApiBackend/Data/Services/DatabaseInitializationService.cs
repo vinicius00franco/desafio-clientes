@@ -11,7 +11,7 @@ using Microsoft.Extensions.Logging;
 
 namespace ApiBackend.Data.Services
 {
-    public class DatabaseInitializationService
+    public class DatabaseInitializationService : IDatabaseInitializationService
     {
         private readonly ContextoApp _context;
         private readonly ILogger<DatabaseInitializationService> _logger;
